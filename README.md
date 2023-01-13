@@ -1,2 +1,2 @@
 # automate-donor-research
-A SQL query that produces a table useful
+Produces a summary table of public political contribution useful for donor research.
