@@ -7,7 +7,7 @@
 # individuals who contributed to EITHER cycles                  #
 #                                                               #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# List of zip codes which intersect with NY 12 Congressional district
+# List of zip codes which intersect with NY DISTRICT Congressional district
 DECLARE zip_code_list ARRAY < STRING >;
 
 SET
@@ -15,7 +15,7 @@ SET
     SELECT
       ARRAY_AGG(zip_codes.zip_code)
     FROM
-      # NY 12 Geo Boundaries
+      # NY DISTRICT Geo Boundaries
       (
         SELECT
           geo_id AS geo_id,
@@ -24,8 +24,8 @@ SET
           `bigquery-public-data.geo_us_boundaries.congress_district_116`
         WHERE
           state_fips_code = "36"
-          AND district_fips_code = "12"
-      ) AS congress_district_116_ny_12
+          AND district_fips_code = "DISTRICT"
+      ) AS congress_district_116_ny_DISTRICT
       JOIN (
         SELECT
           zip_code,
@@ -33,7 +33,7 @@ SET
         FROM
           `bigquery-public-data`.geo_us_boundaries.zip_codes
       ) AS zip_codes ON ST_INTERSECTS(
-        congress_district_116_ny_12.district_geom,
+        congress_district_116_ny_DISTRICT.district_geom,
         zip_codes.geom
       )
   );
@@ -126,8 +126,8 @@ indiv18 AS (
         cmte_id <> "C00401224" #i.e. anything that isn't actblue
     )
 ),
-# ny_12_2020_donations Collect all NY-12 donators donations with committee information
-ny_12_2020_donations AS (
+# ny_DISTRICT_2020_donations Collect all NY-DISTRICT donors donations with committee information
+ny_DISTRICT_2020_donations AS (
   SELECT
     cm20.cmte_id AS cmte_id_2020,
     # 2020 Committee ID
@@ -154,8 +154,8 @@ ny_12_2020_donations AS (
         UNNEST(zip_code_list) zip_code
     )
 ),
-# ny_12_2020_aggregate Bundle committee donations by an individual
-ny_12_2020_aggregate AS (
+# ny_DISTRICT_2020_aggregate Bundle committee donations by an individual
+ny_DISTRICT_2020_aggregate AS (
   SELECT
     LOWER(
       CONCAT(
@@ -179,14 +179,14 @@ ny_12_2020_aggregate AS (
     employer_2020,
     # 2020 Individuals employer
   FROM
-    ny_12_2020_donations
+    ny_DISTRICT_2020_donations
   WHERE
     1 = 1
   ORDER BY
     name_2020 ASC
 ),
-# ny_12_2020_top_k Get top k donations by an individual
-ny_12_2020_top_k AS (
+# ny_DISTRICT_2020_top_k Get top k donations by an individual
+ny_DISTRICT_2020_top_k AS (
   SELECT
     concat_name_2020,
     cmte_nm_2020,
@@ -197,58 +197,58 @@ ny_12_2020_top_k AS (
         amount_2020 DESC
     ) AS top_k
   FROM
-    ny_12_2020_aggregate #LIMIT 10000 # UNCOMMENT TO MAKE FASTER
+    ny_DISTRICT_2020_aggregate #LIMIT 10000 # UNCOMMENT TO MAKE FASTER
 ),
-# ny_12_2020_top_5 aggregate top three donations for each committee by an individual
-ny_12_2020_top_5 AS (
+# ny_DISTRICT_2020_top_5 aggregate top three donations for each committee by an individual
+ny_DISTRICT_2020_top_5 AS (
   SELECT
-    ny_12_2020_top_k.concat_name_2020,
+    ny_DISTRICT_2020_top_k.concat_name_2020,
     STRING_AGG(
       CONCAT(
         "$",
-        ny_12_2020_top_k.amount_2020,
+        ny_DISTRICT_2020_top_k.amount_2020,
         " ",
-        ny_12_2020_top_k.cmte_nm_2020
+        ny_DISTRICT_2020_top_k.cmte_nm_2020
       )
     ) AS list_2020,
     # Aggregate 2020 of committee donations
   FROM
-    ny_12_2020_top_k
+    ny_DISTRICT_2020_top_k
   WHERE
-    ny_12_2020_top_k.top_k <= 5
+    ny_DISTRICT_2020_top_k.top_k <= 5
   GROUP BY
-    ny_12_2020_top_k.concat_name_2020 #LIMIT 10000 # UNCOMMENT TO MAKE FASTER
+    ny_DISTRICT_2020_top_k.concat_name_2020 #LIMIT 10000 # UNCOMMENT TO MAKE FASTER
 ),
-# ny_12_2020_individual aggregate every individual's 2020 donations
-ny_12_2020_individual AS (
+# ny_DISTRICT_2020_individual aggregate every individual's 2020 donations
+ny_DISTRICT_2020_individual AS (
   SELECT
-    ny_12_2020_aggregate.concat_name_2020,
-    SUM(ny_12_2020_aggregate.amount_2020) AS total_2020,
+    ny_DISTRICT_2020_aggregate.concat_name_2020,
+    SUM(ny_DISTRICT_2020_aggregate.amount_2020) AS total_2020,
     # Sum all 2020 donations
-    MAX(ny_12_2020_aggregate.amount_2020) AS largest_2020,
+    MAX(ny_DISTRICT_2020_aggregate.amount_2020) AS largest_2020,
     # Largest 2020 donations
-    COUNT(ny_12_2020_aggregate.amount_2020) AS number_of_donations_2020,
+    COUNT(ny_DISTRICT_2020_aggregate.amount_2020) AS number_of_donations_2020,
     # Largest 2020 donations
-    ny_12_2020_top_5.list_2020,
+    ny_DISTRICT_2020_top_5.list_2020,
     # Aggregate 2020 of committee donations
     STRING_AGG(
       DISTINCT CONCAT(
         " ",
-        ny_12_2020_aggregate.occupation_2020,
+        ny_DISTRICT_2020_aggregate.occupation_2020,
         "/",
-        ny_12_2020_aggregate.employer_2020
+        ny_DISTRICT_2020_aggregate.employer_2020
       )
     ) AS employment_2020,
     # Aggregate 2020 Position/Employer
   FROM
-    ny_12_2020_aggregate
-    JOIN ny_12_2020_top_5 ON ny_12_2020_top_5.concat_name_2020 = ny_12_2020_aggregate.concat_name_2020
+    ny_DISTRICT_2020_aggregate
+    JOIN ny_DISTRICT_2020_top_5 ON ny_DISTRICT_2020_top_5.concat_name_2020 = ny_DISTRICT_2020_aggregate.concat_name_2020
   GROUP BY
     concat_name_2020,
-    ny_12_2020_top_5.list_2020
+    ny_DISTRICT_2020_top_5.list_2020
 ),
-# ny_12_2018_donations Collect all NY-12 donators donations with committee information
-ny_12_2018_donations AS (
+# ny_DISTRICT_2018_donations Collect all NY-DISTRICT donors donations with committee information
+ny_DISTRICT_2018_donations AS (
   SELECT
     cm18.cmte_id AS cmte_id_2018,
     # 2018 Committee ID
@@ -275,9 +275,9 @@ ny_12_2018_donations AS (
         UNNEST(zip_code_list) zip_code
     )
 ),
-# ny_12_2018_aggregate Get donation total, largest donation, number of donation by an individual
+# ny_DISTRICT_2018_aggregate Get donation total, largest donation, number of donation by an individual
 # for each committee they donated to
-ny_12_2018_aggregate AS (
+ny_DISTRICT_2018_aggregate AS (
   SELECT
     LOWER(
       CONCAT(
@@ -301,14 +301,14 @@ ny_12_2018_aggregate AS (
     employer_2018,
     # 2018 Individuals employer
   FROM
-    ny_12_2018_donations
+    ny_DISTRICT_2018_donations
   WHERE
     1 = 1
   ORDER BY
     name_2018 ASC
 ),
-# ny_12_2018_top_k Get top k donations by an individual
-ny_12_2018_top_k AS (
+# ny_DISTRICT_2018_top_k Get top k donations by an individual
+ny_DISTRICT_2018_top_k AS (
   SELECT
     concat_name_2018,
     cmte_nm_2018,
@@ -319,55 +319,55 @@ ny_12_2018_top_k AS (
         amount_2018 DESC
     ) AS top_k
   FROM
-    ny_12_2018_aggregate #LIMIT 10000 # UNCOMMENT TO MAKE FASTER
+    ny_DISTRICT_2018_aggregate #LIMIT 10000 # UNCOMMENT TO MAKE FASTER
 ),
-# ny_12_2018_top_5 aggregate top three donations for each committee by an individual
-ny_12_2018_top_5 AS (
+# ny_DISTRICT_2018_top_5 aggregate top three donations for each committee by an individual
+ny_DISTRICT_2018_top_5 AS (
   SELECT
-    ny_12_2018_top_k.concat_name_2018,
+    ny_DISTRICT_2018_top_k.concat_name_2018,
     STRING_AGG(
       CONCAT(
         "$",
-        ny_12_2018_top_k.amount_2018,
+        ny_DISTRICT_2018_top_k.amount_2018,
         " ",
-        ny_12_2018_top_k.cmte_nm_2018
+        ny_DISTRICT_2018_top_k.cmte_nm_2018
       )
     ) AS list_2018,
     # Aggregate 2018 of committee donations
   FROM
-    ny_12_2018_top_k
+    ny_DISTRICT_2018_top_k
   WHERE
-    ny_12_2018_top_k.top_k <= 5
+    ny_DISTRICT_2018_top_k.top_k <= 5
   GROUP BY
-    ny_12_2018_top_k.concat_name_2018 #LIMIT 10000 # UNCOMMENT TO MAKE FASTER
+    ny_DISTRICT_2018_top_k.concat_name_2018 #LIMIT 10000 # UNCOMMENT TO MAKE FASTER
 ),
-# ny_12_2018_individual aggregate every individual's 2018 donations
-ny_12_2018_individual AS (
+# ny_DISTRICT_2018_individual aggregate every individual's 2018 donations
+ny_DISTRICT_2018_individual AS (
   SELECT
-    ny_12_2018_aggregate.concat_name_2018,
-    SUM(ny_12_2018_aggregate.amount_2018) AS total_2018,
+    ny_DISTRICT_2018_aggregate.concat_name_2018,
+    SUM(ny_DISTRICT_2018_aggregate.amount_2018) AS total_2018,
     # Sum all 2018 donations
-    MAX(ny_12_2018_aggregate.amount_2018) AS largest_2018,
+    MAX(ny_DISTRICT_2018_aggregate.amount_2018) AS largest_2018,
     # Largest 2018 donations
-    COUNT(ny_12_2018_aggregate.amount_2018) AS number_of_donations_2018,
+    COUNT(ny_DISTRICT_2018_aggregate.amount_2018) AS number_of_donations_2018,
     # Largest 2018 donations
-    ny_12_2018_top_5.list_2018,
+    ny_DISTRICT_2018_top_5.list_2018,
     # Aggregate 2018 of committee donations
     STRING_AGG(
       CONCAT(
         " ",
-        ny_12_2018_aggregate.occupation_2018,
+        ny_DISTRICT_2018_aggregate.occupation_2018,
         "/",
-        ny_12_2018_aggregate.employer_2018
+        ny_DISTRICT_2018_aggregate.employer_2018
       )
     ) AS employment_2018,
     # Aggregate 2018 Position/Employer
   FROM
-    ny_12_2018_aggregate
-    JOIN ny_12_2018_top_5 ON ny_12_2018_top_5.concat_name_2018 = ny_12_2018_aggregate.concat_name_2018
+    ny_DISTRICT_2018_aggregate
+    JOIN ny_DISTRICT_2018_top_5 ON ny_DISTRICT_2018_top_5.concat_name_2018 = ny_DISTRICT_2018_aggregate.concat_name_2018
   GROUP BY
     concat_name_2018,
-    ny_12_2018_top_5.list_2018
+    ny_DISTRICT_2018_top_5.list_2018
 ),
 # list of nys voters concat'd by zip+firstname+lastname and their voting history
 nysvoters_aggregate AS (
@@ -404,7 +404,7 @@ nysvoters_aggregate AS (
   GROUP BY
     nysvoters_concat_name
 ),
-# list of CANDIDATE donators concat'd by zip+firstname+lastname and their total contribution to CANDIDATEforcongress
+# list of CANDIDATE donors concat'd by zip+firstname+lastname and their total contribution to CANDIDATEforcongress
 CANDIDATEdonations AS (
   SELECT
     LOWER(
@@ -450,35 +450,35 @@ CANDIDATElist_aggregate AS (
 ) # Combine aggregate tables on 2020 OR 2018 committee donations by a single individual
 # unique by individual's concat'd zip+firstname+lastname
 SELECT
-  ny_12_2020_individual.concat_name_2020,
-  ny_12_2018_individual.total_2018,
+  ny_DISTRICT_2020_individual.concat_name_2020,
+  ny_DISTRICT_2018_individual.total_2018,
   # Sum all 2018 donations
-  ny_12_2020_individual.total_2020,
+  ny_DISTRICT_2020_individual.total_2020,
   # Sum all 2020 donations
-  ny_12_2018_individual.largest_2018,
+  ny_DISTRICT_2018_individual.largest_2018,
   # Largest 2018 donations
-  ny_12_2020_individual.largest_2020,
+  ny_DISTRICT_2020_individual.largest_2020,
   # Largest 2020 donations
-  ny_12_2018_individual.number_of_donations_2018,
+  ny_DISTRICT_2018_individual.number_of_donations_2018,
   # Number 2018 donations
-  ny_12_2020_individual.number_of_donations_2020,
+  ny_DISTRICT_2020_individual.number_of_donations_2020,
   # Number 2020 donations
-  ny_12_2018_individual.list_2018,
+  ny_DISTRICT_2018_individual.list_2018,
   # Aggregate 2018 of committee donations
-  ny_12_2020_individual.list_2020,
+  ny_DISTRICT_2020_individual.list_2020,
   # Aggregate 2020 of committee donations
-  ny_12_2018_individual.employment_2018,
+  ny_DISTRICT_2018_individual.employment_2018,
   # Aggregate 2018 of employment
-  ny_12_2020_individual.employment_2020,
+  ny_DISTRICT_2020_individual.employment_2020,
   # Aggregate 2020 of employment
   nysvoters_aggregate.*,
   CANDIDATElist_aggregate.*,
   CANDIDATEdonations.CANDIDATE_amount AS total_to_CANDIDATE # Total donations to CANDIDATEForCongress
 FROM
-  ny_12_2020_individual
-  LEFT JOIN ny_12_2018_individual ON ny_12_2018_individual.concat_name_2018 = ny_12_2020_individual.concat_name_2020
-  LEFT JOIN CANDIDATEdonations ON CANDIDATEdonations_concat_name = ny_12_2020_individual.concat_name_2020 # Correlate individual donator's CANDIDATE contributions, if exists, null if not
-  LEFT JOIN nysvoters_aggregate ON nysvoters_aggregate.nysvoters_concat_name = ny_12_2020_individual.concat_name_2020 # Correlate individual donator's voting history, if exists, null if not
-  LEFT JOIN CANDIDATElist_aggregate ON CANDIDATElist_aggregate.CANDIDATElist_concat_name = ny_12_2020_individual.concat_name_2020 # Correlate individual donator's voting history, if exists, null if not
+  ny_DISTRICT_2020_individual
+  LEFT JOIN ny_DISTRICT_2018_individual ON ny_DISTRICT_2018_individual.concat_name_2018 = ny_DISTRICT_2020_individual.concat_name_2020
+  LEFT JOIN CANDIDATEdonations ON CANDIDATEdonations_concat_name = ny_DISTRICT_2020_individual.concat_name_2020 # Correlate individual donator's CANDIDATE contributions, if exists, null if not
+  LEFT JOIN nysvoters_aggregate ON nysvoters_aggregate.nysvoters_concat_name = ny_DISTRICT_2020_individual.concat_name_2020 # Correlate individual donator's voting history, if exists, null if not
+  LEFT JOIN CANDIDATElist_aggregate ON CANDIDATElist_aggregate.CANDIDATElist_concat_name = ny_DISTRICT_2020_individual.concat_name_2020 # Correlate individual donator's voting history, if exists, null if not
 ORDER BY
   total_to_CANDIDATE DESC
