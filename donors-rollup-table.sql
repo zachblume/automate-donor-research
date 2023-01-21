@@ -400,12 +400,12 @@ nysvoters_aggregate AS (
     MAX(sboeid) AS sboeid,
     STRING_AGG(DISTINCT voterhistory) AS voterhistory,
   FROM
-    `stately-math-330421.ranaforcongress.nysvoters`
+    `stately-math-330421.CANDIDATEforcongress.nysvoters`
   GROUP BY
     nysvoters_concat_name
 ),
-# list of rana donators concat'd by zip+firstname+lastname and their total contribution to ranaforcongress
-ranadonations AS (
+# list of CANDIDATE donators concat'd by zip+firstname+lastname and their total contribution to CANDIDATEforcongress
+CANDIDATEdonations AS (
   SELECT
     LOWER(
       CONCAT(
@@ -415,17 +415,17 @@ ranadonations AS (
         "+",
         Donor_Last_Name
       )
-    ) AS ranadonations_concat_name,
-    SUM(Amount) AS rana_amount
+    ) AS CANDIDATEdonations_concat_name,
+    SUM(Amount) AS CANDIDATE_amount
   FROM
-    `stately-math-330421.ranaforcongress.ranadonations`
+    `stately-math-330421.CANDIDATEforcongress.CANDIDATEdonations`
   GROUP BY
-    ranadonations_concat_name
+    CANDIDATEdonations_concat_name
 ),
 # List of
-ranalist_aggregate AS (
+CANDIDATElist_aggregate AS (
   SELECT
-    LOWER(CONCAT(Zip, "+", FirstName, "+", LastName)) AS ranalist_concat_name,
+    LOWER(CONCAT(Zip, "+", FirstName, "+", LastName)) AS CANDIDATElist_concat_name,
     MAX(VANID) AS VANID,
     MAX(PreferredEmail) AS PreferredEmail,
     MAX(PreferredPhone) AS PreferredPhone,
@@ -436,7 +436,7 @@ ranalist_aggregate AS (
     MAX(Zip4) AS Zip4,
     MAX(CountryCode) AS CountryCode,
     MAX(VoterVANID) AS VoterVANID,
-    MAX(Support_Rana) AS Support_Rana,
+    MAX(Support_CANDIDATE) AS Support_CANDIDATE,
     MAX(Volunteer_Ask) AS Volunteer_Ask,
     MAX(Donor) AS Donor,
     MAX(MonthlyDonor) AS MonthlyDonor,
@@ -444,9 +444,9 @@ ranalist_aggregate AS (
     MAX(PrecinctName) AS PrecinctName,
     MAX(Notes) AS Notes,
   FROM
-    `stately-math-330421.ranaforcongress.ranalist`
+    `stately-math-330421.CANDIDATEforcongress.CANDIDATElist`
   GROUP BY
-    ranalist_concat_name
+    CANDIDATElist_concat_name
 ) # Combine aggregate tables on 2020 OR 2018 committee donations by a single individual
 # unique by individual's concat'd zip+firstname+lastname
 SELECT
@@ -472,13 +472,13 @@ SELECT
   ny_12_2020_individual.employment_2020,
   # Aggregate 2020 of employment
   nysvoters_aggregate.*,
-  ranalist_aggregate.*,
-  ranadonations.rana_amount AS total_to_rana # Total donations to RanaForCongress
+  CANDIDATElist_aggregate.*,
+  CANDIDATEdonations.CANDIDATE_amount AS total_to_CANDIDATE # Total donations to CANDIDATEForCongress
 FROM
   ny_12_2020_individual
   LEFT JOIN ny_12_2018_individual ON ny_12_2018_individual.concat_name_2018 = ny_12_2020_individual.concat_name_2020
-  LEFT JOIN ranadonations ON ranadonations_concat_name = ny_12_2020_individual.concat_name_2020 # Correlate individual donator's rana contributions, if exists, null if not
+  LEFT JOIN CANDIDATEdonations ON CANDIDATEdonations_concat_name = ny_12_2020_individual.concat_name_2020 # Correlate individual donator's CANDIDATE contributions, if exists, null if not
   LEFT JOIN nysvoters_aggregate ON nysvoters_aggregate.nysvoters_concat_name = ny_12_2020_individual.concat_name_2020 # Correlate individual donator's voting history, if exists, null if not
-  LEFT JOIN ranalist_aggregate ON ranalist_aggregate.ranalist_concat_name = ny_12_2020_individual.concat_name_2020 # Correlate individual donator's voting history, if exists, null if not
+  LEFT JOIN CANDIDATElist_aggregate ON CANDIDATElist_aggregate.CANDIDATElist_concat_name = ny_12_2020_individual.concat_name_2020 # Correlate individual donator's voting history, if exists, null if not
 ORDER BY
-  total_to_rana DESC
+  total_to_CANDIDATE DESC
